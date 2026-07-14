@@ -170,7 +170,7 @@ export async function fetchFootballFixtures(season = "2026"): Promise<Match[]> {
 
     // Dynamically retrieve the pool split from Injective MCP Server for each match
     const matchesWithPools = await Promise.all(
-      matches.map(async (match) => {
+      matches.map(async (match: any) => {
         try {
           const pool = await getPoolStatusViaMcp(match.id);
           return {
