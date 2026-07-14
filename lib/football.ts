@@ -74,11 +74,11 @@ function getDynamicVenue(
 
   const seed = (matchId || homeTeam || "").split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const index = seed % stadiums.length;
-  
+
   const isFinal = stage && (
-    stage.toLowerCase().includes("final") || 
-    stage.toLowerCase().includes("third") || 
-    stage.toLowerCase().includes("juara") || 
+    stage.toLowerCase().includes("final") ||
+    stage.toLowerCase().includes("third") ||
+    stage.toLowerCase().includes("juara") ||
     stage.toLowerCase().includes("perebutan")
   );
   if (isFinal) {
@@ -134,7 +134,7 @@ export async function fetchFootballFixtures(season = "2026"): Promise<Match[]> {
       "GROUP_STAGE": "Group Stage",
     };
 
-    const matches = responseList.map((item: any) => {
+    const matches: Match[] = responseList.map((item: any) => {
       let status: "UPCOMING" | "LIVE" | "FINISHED" = "UPCOMING";
 
       if (["IN_PLAY", "PAUSED"].includes(item.status)) {
@@ -170,7 +170,7 @@ export async function fetchFootballFixtures(season = "2026"): Promise<Match[]> {
 
     // Dynamically retrieve the pool split from Injective MCP Server for each match
     const matchesWithPools = await Promise.all(
-      matches.map(async (match: any) => {
+      matches.map(async (match: Match) => {
         try {
           const pool = await getPoolStatusViaMcp(match.id);
           return {
