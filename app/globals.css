@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Signature element: a faint pitch-marking grid behind every section,
+   center circle included, so the whole app quietly sits "on the field". */
+.pitch-field {
+  background-color: #0b1f17;
+  background-image:
+    radial-gradient(circle at 50% 50%, transparent 0, transparent 78px, rgba(242, 240, 230, 0.06) 79px, rgba(242, 240, 230, 0.06) 80px, transparent 81px),
+    repeating-linear-gradient(0deg, transparent, transparent 119px, rgba(242, 240, 230, 0.04) 120px);
+  background-position: center top;
+}
+
+.mono-tag {
+  font-family: "IBM Plex Mono", monospace;
+  letter-spacing: 0.08em;
+}
+
+:focus-visible {
+  outline: 2px solid #4fe3a1;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
