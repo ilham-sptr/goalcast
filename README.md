@@ -1,73 +1,137 @@
 # GoalCast — AI World Cup Fan Companion on Injective
 
-Dibangun untuk **The Injective Global Cup** (3–19 Juli 2026). GoalCast adalah
-web app fan World Cup yang menggabungkan empat teknologi baru Injective
-sekaligus, bukan sekadar demo satu fitur:
+**Dibangun untuk The Injective Global Cup (3–19 Juli 2026)**
 
-| Teknologi | Dipakai di mana |
+GoalCast adalah web app fan World Cup yang menggabungkan AI match analyst,
+micropayment on-demand, dan on-chain fan prediction pool — dibangun di atas
+empat teknologi baru Injective sekaligus: **x402, CCTP, MCP Server, dan
+Agent Skills**.
+
+🔗 **Live app**: <isi di sini — URL Vercel>
+🔗 **Video demo**: <isi di sini — link YouTube/Loom>
+
+---
+
+## Masalah yang diselesaikan
+
+1. **Prediksi fan enggak transparan.** Polling/prediksi fan di platform lain
+   cuma disimpan di database perusahaan — bisa diedit atau dihapus sepihak,
+   enggak bisa diverifikasi siapa pun. GoalCast mencatatnya di smart
+   contract on-chain, terbuka buat diaudit siapa saja.
+2. **AI insight berkualitas terkunci di balik subscription bulanan**, padahal
+   fan sering cuma butuh insight buat 1-2 pertandingan tertentu. GoalCast
+   pakai micropayment x402 — bayar $0.05 per analisis yang benar-benar
+   dipakai, bukan langganan.
+3. **Fan di luar ekosistem Injective kesulitan berpartisipasi** karena harus
+   bridge USDC manual yang ribet. GoalCast pakai CCTP buat transfer USDC
+   native langsung dari Ethereum/Base ke Injective.
+
+## Fitur utama
+
+| Fitur | Deskripsi |
 |---|---|
-| **Agent Skills** | `lib/skills/world-cup-analyst/SKILL.md` — mendefinisikan cara AI analyst membaca pertandingan, dipakai sebagai system prompt di `/api/chat` |
-| **Injective MCP Server** | `lib/injective.ts` — AI/agent mendaftarkan prediksi fan ke on-chain prediction pool lewat MCP tools `register_prediction` & `get_pool_status` |
-| **x402** | `lib/x402.ts` + `/api/premium-insight` — deep-dive analisis AI premium dibuka lewat micropayment USDC $0.05, mengikuti handshake HTTP 402 standar |
-| **CCTP** | `lib/cctp.ts` — fan bisa top-up USDC dari Ethereum/Base langsung ke alamat Injective mereka untuk isi saldo prediction pool |
+| **Dashboard live** | Jadwal & skor World Cup real-time + visualisasi pool split prediksi tiap pertandingan |
+| **AI Match Analyst** | Chat dengan AI yang dibekali Agent Skill khusus (`world-cup-analyst`) — baca form tim, matchup kunci, dan confidence prediksi |
+| **Deep-Dive Premium (x402)** | Analisis mendalam (momentum menit-per-menit, ancaman set-piece) dibuka lewat micropayment USDC $0.05, mengikuti standar HTTP 402 |
+| **Fan Prediction Pool (MCP Server)** | Prediksi fan tercatat di smart contract Injective lewat MCP server custom, bukan simulasi — protokol MCP asli |
+| **Cross-chain funding (CCTP)** | Fan dari chain lain bisa top-up USDC langsung ke Injective tanpa bridge pihak ketiga |
 
-## Menjalankan secara lokal
+## Alur kerja end-to-end
+
+```
+Fan buka dashboard
+   → lihat jadwal & skor + persentase pool prediksi
+   → chat dengan AI Analyst (baca Agent Skill world-cup-analyst)
+   → (opsional) buka Deep-Dive Premium via x402 micropayment
+   → submit prediksi → app manggil MCP Server (protokol MCP asli)
+   → MCP Server eksekusi tx RegisterPrediction ke smart contract di Injective
+   → Pool split ter-update, tercatat permanen on-chain
+   → (opsional) fan dari chain lain top-up USDC via CCTP
+```
+
+## Arsitektur & teknologi Injective
+
+| Teknologi | Implementasi |
+|---|---|
+| **Agent Skills** | `lib/skills/world-cup-analyst/SKILL.md` — dipakai sebagai system prompt AI analyst |
+| **Injective MCP Server** | Server MCP custom (protokol MCP asli via `@modelcontextprotocol/sdk`, Streamable HTTP) yang membungkus contract `PredictionPool`, expose 2 tools: `register_prediction`, `get_pool_status` |
+| **x402** | Deep-dive analysis di-gate lewat HTTP 402 payment challenge standar |
+| **CCTP** | Helper `depositForBurn` buat transfer USDC lintas chain ke Injective |
+
+```
+┌─────────────────────┐         ┌──────────────────────┐
+│   GoalCast App        │  MCP    │   MCP Server           │
+│   (Next.js, Vercel)   │ ──────▶ │   (Railway)             │
+│   dashboard+chat+x402 │         │   register_prediction    │
+│                        │         │   get_pool_status         │
+└─────────────────────┘         └──────────┬───────────┘
+                                              │ tx / query
+                                              ▼
+                                 PredictionPool (CosmWasm)
+                                 Injective Testnet
+                                 <isi di sini — contract address>
+```
+
+## Repo
+
+Project ini dipecah jadi 3 repo, masing-masing di-deploy terpisah:
+
+| Repo | Isi | Deploy ke |
+|---|---|---|
+| [`goalcast`](<isi di sini>) | App Next.js (dashboard, AI chat, x402) | Vercel |
+| [`goalcast-mcp-server`](<isi di sini>) | MCP server (register_prediction, get_pool_status) | Railway |
+| [`goalcast-contracts`](<isi di sini>) | Contract `PredictionPool` (Rust/CosmWasm) | Injective Testnet |
+
+**Contract address (live di testnet)**: `<isi di sini — inj1...>`
+Cek langsung di explorer: `<isi di sini — link ke Injective testnet explorer>`
+
+## Tech stack
+
+- **Frontend/Backend**: Next.js 14, TypeScript, Tailwind CSS
+- **AI**: OpenRouter (chat completion, model gratis)
+- **On-chain**: CosmWasm (Rust), `@injectivelabs/sdk-ts`
+- **MCP**: `@modelcontextprotocol/sdk` (Streamable HTTP transport)
+- **Data**: football-data.org (jadwal & skor World Cup real-time)
+
+## Cara jalanin lokal
 
 ```bash
+# 1. App utama
+git clone <isi di sini — repo goalcast>
+cd goalcast
 npm install
-cp .env.example .env.local   # isi ANTHROPIC_API_KEY minimal, sisanya optional untuk demo
+cp .env.example .env.local   # isi OPENROUTER_API_KEY (gratis), FOOTBALL_API_KEY, INJECTIVE_MCP_SERVER_URL
+npm run dev
+
+# 2. MCP server (repo terpisah)
+git clone <isi di sini — repo goalcast-mcp-server>
+cd goalcast-mcp-server
+npm install
+cp .env.example .env   # isi INJECTIVE_PRIVATE_KEY, PREDICTION_POOL_CONTRACT_ADDRESS
 npm run dev
 ```
 
-Buka `http://localhost:3000`. Tanpa env Injective/x402/CCTP diisi, app tetap
-jalan penuh — semua bagian on-chain punya **simulated fallback** (lihat
-komentar `TODO` di `lib/injective.ts` dan `lib/x402.ts`) supaya UI dan alur
-AI bisa didemokan sebelum kontrak & MCP server live.
+## Known limitations (jujur, biar transparan ke juri)
 
-## Struktur project
+1. **Wallet MCP server sendiri yang menandatangani semua prediksi**, bukan
+   wallet fan masing-masing. Cukup buat membuktikan alur MCP → contract →
+   chain jalan penuh, tapi versi production idealnya fan sign sendiri
+   lewat wallet mereka (Keplr/Leap) sebelum di-relay ke MCP server.
+2. **Pool split di dashboard belum otomatis nyambung ke data live** — ID
+   pertandingan dari football-data.org (numerik) dan `match_id` di contract
+   (string custom) masih perlu di-mapping manual. Saat ini pool split cuma
+   muncul buat pertandingan demo yang sudah di-`SetKickoff` manual.
+3. **CCTP** masih di level helper function (`buildDepositForBurnArgs`) —
+   alur signing dari wallet EVM ke Injective belum diwire ke UI, jadi belum
+   bisa didemokan end-to-end, cuma diverifikasi logic-nya.
 
-```
-app/
-  page.tsx                 dashboard fixture + pool split
-  chat/page.tsx             AI analyst chat + unlock premium + submit prediksi
-  api/chat/route.ts         Claude + Agent Skill (world-cup-analyst)
-  api/premium-insight/route.ts   x402-gated deep dive
-  api/predict/route.ts      submit/baca prediksi lewat Injective MCP Server
-components/
-  MatchCard.tsx              kartu fixture + live pool split bar
-  WalletConnect.tsx          connect wallet Injective (stub, ganti ke wallet-ts)
-lib/
-  injective.ts               MCP Server bridge + saldo on-chain
-  x402.ts                    payment challenge + verifikasi
-  cctp.ts                    bantuan build calldata depositForBurn
-  skills/world-cup-analyst/SKILL.md   Agent Skill definition
-contracts/
-  README.md                  spesifikasi PredictionPool CosmWasm + cara wiring ke MCP
-```
+## Roadmap setelah hackathon
 
-## Roadmap sampai submission (checklist realistis buat solo)
+- [ ] Fan-side wallet signing buat prediksi (bukan server-side signing)
+- [ ] Mapping otomatis match ID API ↔ on-chain
+- [ ] UI top-up CCTP end-to-end
+- [ ] Audit contract sebelum ke mainnet
 
-**Prioritas 1 — supaya app "hidup" (1-2 hari)**
-- [ ] Ganti data `MATCHES` di `app/page.tsx` dengan fetch API bola beneran
-      (mis. API-Football / football-data.org, key gratis)
-- [ ] Isi `ANTHROPIC_API_KEY`, test chat end-to-end
-- [ ] Rekam demo video 2-3 menit: dashboard → chat AI → submit prediksi → unlock premium
+---
 
-**Prioritas 2 — supaya on-chain-nya nyata (3-4 hari)**
-- [ ] Deploy `PredictionPool` (lihat `contracts/README.md`) ke Injective testnet
-- [ ] Jalankan Injective MCP Server, arahkan `INJECTIVE_MCP_SERVER_URL`
-- [ ] Ganti `WalletConnect.tsx` stub dengan `@injectivelabs/wallet-ts` beneran (Keplr/Leap)
-
-**Prioritas 3 — polish x402 & CCTP (sisa waktu)**
-- [ ] Wire signing X-PAYMENT beneran di `unlockDeepDive()` (`app/chat/page.tsx`)
-- [ ] Tambah tombol "Top-up via CCTP" di dashboard yang manggil `buildDepositForBurnArgs`
-- [ ] Tulis README submission + diagram arsitektur buat panel juri
-
-## Kenapa arah ini kompetitif
-
-- Memakai **keempat** teknologi wajib secara fungsional saling terhubung
-  (bukan ditempel terpisah): AI kasih insight → insight itu yang dipremiumkan
-  lewat x402 → prediksi hasil insight itu yang didaftarkan lewat MCP Server →
-  CCTP yang mendanai partisipasi.
-- Ada nilai guna nyata buat fan (bukan cuma showcase teknis).
-- Scope MVP-nya achievable solo dalam window 3–19 Juli kalau ikut roadmap di atas.
+Dibangun solo oleh <isi di sini — nama kamu> untuk The Injective Global Cup.
