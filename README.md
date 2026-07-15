@@ -7,7 +7,7 @@ micropayment on-demand, dan on-chain fan prediction pool — dibangun di atas
 empat teknologi baru Injective sekaligus: **x402, CCTP, MCP Server, dan
 Agent Skills**.
 
-🔗 **Live app**: <isi di sini — URL Vercel>
+🔗 **Live app**: https://goalcast-worldcup.vercel.app/
 🔗 **Video demo**: <isi di sini — link YouTube/Loom>
 
 ---
@@ -78,12 +78,12 @@ Project ini dipecah jadi 3 repo, masing-masing di-deploy terpisah:
 
 | Repo | Isi | Deploy ke |
 |---|---|---|
-| [`goalcast`](<isi di sini>) | App Next.js (dashboard, AI chat, x402) | Vercel |
-| [`goalcast-mcp-server`](<isi di sini>) | MCP server (register_prediction, get_pool_status) | Railway |
-| [`goalcast-contracts`](<isi di sini>) | Contract `PredictionPool` (Rust/CosmWasm) | Injective Testnet |
+| [`goalcast`](https://github.com/ilhamsptr/goalcast) | App Next.js (dashboard, AI chat, x402) | Vercel |
+| [`goalcast-mcp-server`](https://github.com/ilham-sptr/mcp-server) | MCP server (register_prediction, get_pool_status) | Railway |
+| [`goalcast-contracts`](https://github.com/ilham-sptr/goalcast-contracts) | Contract `PredictionPool` (Rust/CosmWasm) | Injective Testnet |
 
-**Contract address (live di testnet)**: `<isi di sini — inj1...>`
-Cek langsung di explorer: `<isi di sini — link ke Injective testnet explorer>`
+**Contract address (live di testnet)**: `inj1vzz70gewfxc5gvfvndhq6u5e0q0vx270yg43l8`
+Cek langsung di explorer: `https://testnet.explorer.injective.network/`
 
 ## Tech stack
 
@@ -134,4 +134,4 @@ npm run dev
 
 ---
 
-Dibangun solo oleh <isi di sini — nama kamu> untuk The Injective Global Cup.
+Dibangun solo oleh Ilham Saputra untuk The Injective Global Cup.

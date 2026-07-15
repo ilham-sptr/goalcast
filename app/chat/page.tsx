@@ -240,26 +240,136 @@ function ChatContent() {
   }
 
   async function unlockDeepDive() {
-    setUnlocking(true);
-    // 1st call: expect 402, read the payment challenge.
-    const first = await fetch("/api/premium-insight", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ matchContext })
-    });
+    if (!matchContext) return;
+    
+    const walletAddress = address || customAddress.trim();
+    if (!walletAddress) {
+      alert("Please connect your wallet or enter an Injective address first.");
+      return;
+    }
 
-    if (first.status === 402) {
-      const challenge = await first.json();
-      // Sign simulated payment and retry
-      const retry = await fetch("/api/premium-insight", {
+    setUnlocking(true);
+    try {
+      // 1st call: expect 402, read the payment challenge.
+      const first = await fetch("/api/premium-insight", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-PAYMENT": "SIMULATED-PAYMENT" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ matchContext })
       });
-      const data = await retry.json();
-      setDeepDive(data.deepDive ?? JSON.stringify(challenge));
+
+      if (first.status === 402) {
+        const challenge = await first.json();
+        
+        // Retrieve connected wallet provider
+        const provider = localStorage.getItem("inj_wallet_provider") || "keplr";
+        const wallet = provider === "leap" ? window.leap : window.keplr;
+        if (!wallet) {
+          throw new Error(`${provider.charAt(0).toUpperCase() + provider.slice(1)} wallet not found. Cannot sign payment.`);
+        }
+
+        const chainId = "injective-888";
+        
+        // Get user's public key from the connected wallet
+        const keyInfo = await wallet.getKey(chainId);
+        const base64PubKey = btoa(
+          String.fromCharCode.apply(null, Array.from(keyInfo.pubKey))
+        );
+
+        // Fetch prepared transaction from the backend
+        const prepareRes = await fetch("/api/premium-insight/prepare", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sender: walletAddress, pubKey: base64PubKey })
+        });
+        if (!prepareRes.ok) {
+          const errData = await prepareRes.json();
+          throw new Error(errData.error || "Failed to prepare transaction.");
+        }
+        const { bodyBytes, authInfoBytes, accountNumber, sequence } = await prepareRes.json();
+
+        // Hex to Uint8Array helper
+        const hexToBytes = (hex: string) => {
+          const bytes = new Uint8Array(hex.length / 2);
+          for (let i = 0; i < bytes.length; i++) {
+            bytes[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+          }
+          return bytes;
+        };
+
+        // Sign the real on-chain transaction via wallet signDirect (Protobuf)
+        const signDoc = {
+          bodyBytes: hexToBytes(bodyBytes),
+          authInfoBytes: hexToBytes(authInfoBytes),
+          chainId,
+          accountNumber: (accountNumber || "0").toString()
+        };
+
+        console.log(`[x402] Prompting wallet to sign real transaction:`, signDoc);
+        const signResult = await wallet.signDirect(chainId, walletAddress, signDoc);
+        if (!signResult || !signResult.signature) {
+          throw new Error("Payment transaction cancelled by user.");
+        }
+
+        // Uint8Array to Hex helper
+        const bytesToHex = (bytes: Uint8Array) => {
+          return Array.from(bytes)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+        };
+
+        // Broadcast the signed transaction via backend
+        const broadcastRes = await fetch("/api/premium-insight/broadcast", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            signed: {
+              bodyBytes: bytesToHex(signResult.signed.bodyBytes),
+              authInfoBytes: bytesToHex(signResult.signed.authInfoBytes),
+              chainId: signResult.signed.chainId,
+              accountNumber: signResult.signed.accountNumber
+            },
+            signature: {
+              pub_key: signResult.signature.pub_key,
+              signature: signResult.signature.signature
+            }
+          })
+        });
+
+        if (!broadcastRes.ok) {
+          const errData = await broadcastRes.json();
+          throw new Error(errData.error || "Transaction broadcast failed.");
+        }
+
+        const { txHash } = await broadcastRes.json();
+        console.log(`[x402] On-chain transaction broadcasted successfully. TxHash: ${txHash}`);
+
+        // Retry the request with the real txHash in the X-PAYMENT header
+        const retry = await fetch("/api/premium-insight", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json", 
+            "X-PAYMENT": txHash
+          },
+          body: JSON.stringify({ matchContext })
+        });
+
+        if (!retry.ok) {
+          const errData = await retry.json();
+          throw new Error(errData.error || "Failed to verify premium insight payment on-chain.");
+        }
+
+        const data = await retry.json();
+        setDeepDive(data.deepDive ?? JSON.stringify(challenge));
+      } else {
+        const data = await first.json();
+        setDeepDive(data.deepDive);
+      }
+    } catch (err) {
+      console.error("Failed to unlock deep dive:", err);
+      alert(err instanceof Error ? err.message : "Unlock failed.");
+    } finally {
+      setUnlocking(false);
     }
-    setUnlocking(false);
   }
 
   async function submitPrediction() {
