@@ -1,5 +1,5 @@
 import { Match } from "@/components/MatchCard";
-import { getPoolStatusViaMcp } from "./injective";
+import { getDeterministicBaseline } from "./injective";
 
 const API_KEY = process.env.FOOTBALL_API_KEY;
 
@@ -161,34 +161,22 @@ export async function fetchFootballFixtures(season = "2026"): Promise<Match[]> {
           String(item.id)
         ),
         status,
-        score: item.score?.fullTime?.home !== null && item.score?.fullTime?.away !== null ? {
+        score: item.score && item.score.fullTime && item.score.fullTime.home !== null && item.score.fullTime.away !== null ? {
           home: item.score.fullTime.home,
           away: item.score.fullTime.away
         } : undefined,
       };
     });
 
-    // Dynamically retrieve the pool split from Injective MCP Server for each match
-    const matchesWithPools = await Promise.all(
-      matches.map(async (match: Match) => {
-        try {
-          const pool = await getPoolStatusViaMcp(match.id);
-          return {
-            ...match,
-            poolSplit: {
-              home: pool.home,
-              draw: pool.draw,
-              away: pool.away
-            }
-          };
-        } catch (e) {
-          return {
-            ...match,
-            poolSplit: { home: 38, draw: 24, away: 38 }
-          };
-        }
-      })
-    );
+    // Calculate pool splits locally for the list of matches to avoid N parallel network requests on Vercel/serverless environments.
+    // The live/updated pool status is fetched on-demand per match in the detail/chat view.
+    const matchesWithPools = matches.map((match: Match) => {
+      const baseline = getDeterministicBaseline(match.id);
+      return {
+        ...match,
+        poolSplit: baseline
+      };
+    });
 
     return matchesWithPools;
   } catch (error) {

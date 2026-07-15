@@ -17,19 +17,20 @@
  * agents.injective.com) and deploy `PredictionPool` from /contracts.
  */
 
-import { getNetworkEndpoints, Network } from "@injectivelabs/networks";
-import { ChainGrpcBankApi } from "@injectivelabs/sdk-ts";
+// SDK packages are imported dynamically inside functions to prevent build-time/import-time crashes
+// on serverless environments like Vercel which might lack Node polyfills/modules.
 
-const NETWORK =
-  process.env.INJECTIVE_NETWORK === "mainnet" ? Network.Mainnet : Network.Testnet;
-
-export function getEndpoints() {
+export async function getEndpoints() {
+  const { getNetworkEndpoints, Network } = await import("@injectivelabs/networks");
+  const NETWORK =
+    process.env.INJECTIVE_NETWORK === "mainnet" ? Network.Mainnet : Network.Testnet;
   return getNetworkEndpoints(NETWORK);
 }
 
 /** Read-only: fetch a wallet's INJ/USDC balances for the wallet-connect widget. */
 export async function getBalances(injectiveAddress: string) {
-  const endpoints = getEndpoints();
+  const endpoints = await getEndpoints();
+  const { ChainGrpcBankApi } = await import("@injectivelabs/sdk-ts");
   const bankApi = new ChainGrpcBankApi(endpoints.grpc);
   const balances = await bankApi.fetchBalances(injectiveAddress);
   return balances;
@@ -45,7 +46,7 @@ export type PredictionInput = {
 // In-memory prediction tracking to simulate active voting and progress bar updates in real-time
 const SIMULATED_PREDICTIONS: Record<string, { HOME: number; DRAW: number; AWAY: number }> = {};
 
-function getDeterministicBaseline(matchId: string) {
+export function getDeterministicBaseline(matchId: string) {
   let hash = 0;
   for (let i = 0; i < matchId.length; i++) {
     hash = matchId.charCodeAt(i) + ((hash << 5) - hash);
@@ -68,7 +69,11 @@ export async function registerPredictionViaMcp(input: PredictionInput) {
   }
   SIMULATED_PREDICTIONS[input.matchId][input.predictedOutcome] += 10; // Increment weight for immediate impact
 
-  const mcpUrl = process.env.INJECTIVE_MCP_SERVER_URL;
+  let mcpUrl = process.env.INJECTIVE_MCP_SERVER_URL;
+  if (mcpUrl && !mcpUrl.startsWith("http://") && !mcpUrl.startsWith("https://")) {
+    mcpUrl = `https://${mcpUrl}`;
+  }
+
   if (!mcpUrl) {
     // Local/demo fallback so the UI flow is testable before the MCP
     // server + contract are deployed.
@@ -106,7 +111,10 @@ export async function registerPredictionViaMcp(input: PredictionInput) {
 }
 
 export async function getPoolStatusViaMcp(matchId: string) {
-  const mcpUrl = process.env.INJECTIVE_MCP_SERVER_URL;
+  let mcpUrl = process.env.INJECTIVE_MCP_SERVER_URL;
+  if (mcpUrl && !mcpUrl.startsWith("http://") && !mcpUrl.startsWith("https://")) {
+    mcpUrl = `https://${mcpUrl}`;
+  }
   
   // Calculate dynamic baseline + current user predictions
   const localVotes = SIMULATED_PREDICTIONS[matchId] || { HOME: 0, DRAW: 0, AWAY: 0 };
