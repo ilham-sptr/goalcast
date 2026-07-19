@@ -4,7 +4,14 @@ import { openRouterChat } from "@/lib/openrouter";
 
 export async function POST(req: NextRequest) {
   const xPayment = req.headers.get("X-PAYMENT");
-  const paid = await verifyPayment(xPayment);
+  
+  let paid = false;
+  try {
+    paid = await verifyPayment(xPayment);
+  } catch (err) {
+    console.error("[api/premium-insight] Error verifying payment:", err);
+    paid = false;
+  }
 
   if (!paid) {
     // Standard x402 handshake: tell the client exactly what to pay and where.

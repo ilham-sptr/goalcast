@@ -100,12 +100,17 @@ export async function verifyPayment(xPaymentHeader: string | null): Promise<bool
   const facilitatorUrl = process.env.X402_FACILITATOR_URL;
   if (!facilitatorUrl) return false;
 
-  const res = await fetch(`${facilitatorUrl}/verify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ payment: xPaymentHeader })
-  });
-  if (!res.ok) return false;
-  const data = await res.json();
-  return data.isValid === true;
+  try {
+    const res = await fetch(`${facilitatorUrl}/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ payment: xPaymentHeader })
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.isValid === true;
+  } catch (err) {
+    console.error(`[x402] Facilitator verification failed:`, err);
+    return false;
+  }
 }

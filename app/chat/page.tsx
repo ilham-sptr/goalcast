@@ -147,6 +147,26 @@ function FormatMarkdown({ text }: { text: string }) {
   return <div className="space-y-1">{elements}</div>;
 }
 
+async function safeParseJson(res: Response, fallbackMsg: string) {
+  const contentType = res.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    try {
+      return await res.json();
+    } catch (err) {
+      // Fall through to text parsing
+    }
+  }
+  try {
+    const text = await res.text();
+    throw new Error(`${fallbackMsg} (Status ${res.status}): ${text.slice(0, 150) || "Empty response"}`);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes(fallbackMsg)) {
+      throw err;
+    }
+    throw new Error(`${fallbackMsg} (Status ${res.status})`);
+  }
+}
+
 function ChatContent() {
   const searchParams = useSearchParams();
   const matchId = searchParams.get("match");
@@ -250,6 +270,26 @@ function ChatContent() {
 
     setUnlocking(true);
     try {
+      // Simulation bypass flow
+      if (walletAddress.toUpperCase().startsWith("SIMULATED")) {
+        const retry = await fetch("/api/premium-insight", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json", 
+            "X-PAYMENT": walletAddress
+          },
+          body: JSON.stringify({ matchContext })
+        });
+
+        if (!retry.ok) {
+          await safeParseJson(retry, "Failed to verify premium insight payment on-chain");
+        }
+
+        const data = await safeParseJson(retry, "Failed to parse premium insight");
+        setDeepDive(data.deepDive);
+        return;
+      }
+
       // 1st call: expect 402, read the payment challenge.
       const first = await fetch("/api/premium-insight", {
         method: "POST",
@@ -258,7 +298,7 @@ function ChatContent() {
       });
 
       if (first.status === 402) {
-        const challenge = await first.json();
+        const challenge = await safeParseJson(first, "Failed to read payment challenge");
         
         // Retrieve connected wallet provider
         const provider = localStorage.getItem("inj_wallet_provider") || "keplr";
@@ -282,10 +322,9 @@ function ChatContent() {
           body: JSON.stringify({ sender: walletAddress, pubKey: base64PubKey })
         });
         if (!prepareRes.ok) {
-          const errData = await prepareRes.json();
-          throw new Error(errData.error || "Failed to prepare transaction.");
+          await safeParseJson(prepareRes, "Failed to prepare transaction");
         }
-        const { bodyBytes, authInfoBytes, accountNumber, sequence } = await prepareRes.json();
+        const { bodyBytes, authInfoBytes, accountNumber, sequence } = await safeParseJson(prepareRes, "Failed to parse prepared transaction");
 
         // Hex to Uint8Array helper
         const hexToBytes = (hex: string) => {
@@ -336,11 +375,10 @@ function ChatContent() {
         });
 
         if (!broadcastRes.ok) {
-          const errData = await broadcastRes.json();
-          throw new Error(errData.error || "Transaction broadcast failed.");
+          await safeParseJson(broadcastRes, "Transaction broadcast failed");
         }
 
-        const { txHash } = await broadcastRes.json();
+        const { txHash } = await safeParseJson(broadcastRes, "Failed to parse broadcast response");
         console.log(`[x402] On-chain transaction broadcasted successfully. TxHash: ${txHash}`);
 
         // Retry the request with the real txHash in the X-PAYMENT header
@@ -354,15 +392,16 @@ function ChatContent() {
         });
 
         if (!retry.ok) {
-          const errData = await retry.json();
-          throw new Error(errData.error || "Failed to verify premium insight payment on-chain.");
+          await safeParseJson(retry, "Failed to verify premium insight payment on-chain");
         }
 
-        const data = await retry.json();
+        const data = await safeParseJson(retry, "Failed to parse premium insight");
         setDeepDive(data.deepDive ?? JSON.stringify(challenge));
-      } else {
-        const data = await first.json();
+      } else if (first.ok) {
+        const data = await safeParseJson(first, "Failed to parse premium insight");
         setDeepDive(data.deepDive);
+      } else {
+        await safeParseJson(first, "Failed to request premium insight");
       }
     } catch (err) {
       console.error("Failed to unlock deep dive:", err);
