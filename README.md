@@ -9,6 +9,19 @@ GoalCast is a World Cup fan web app that combines AI match analysis, on-demand m
 
 ---
 
+## Repository Structure
+
+This project is split into 3 separate repositories:
+
+| Repository | Content | Deployed on |
+|------------|---------|-------------|
+| [goalcast](https://github.com/ilham-sptr/goalcast) | Next.js frontend (dashboard, AI chat, x402) | Vercel |
+| [goalcast-mcp-server](https://github.com/ilham-sptr/mcp-server) | MCP Server | Railway |
+| [goalcast-contracts](https://github.com/ilham-sptr/goalcast-contracts) | `PredictionPool` Smart Contract (Rust/CosmWasm) | Injective Testnet |
+
+**Contract Address (Testnet)**: `inj1vzz70gewfxc5gvfvndhq6u5e0q0vx270yg43l8`  
+**Explorer**: [https://testnet.explorer.injective.network/](https://testnet.explorer.injective.network/)
+
 ## Problem Statement
 
 1. **Fan predictions lack transparency.** Traditional polling platforms store data in centralized databases that can be edited or deleted unilaterally. GoalCast records every prediction on-chain, making it publicly verifiable and immutable.
