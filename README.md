@@ -81,6 +81,4 @@ As new matches go live, the fan repeats the cycle: check the dashboard → ask t
 - MCP Server — Railway deployment
 - Smart Contract — CosmWasm `PredictionPool`, Injective testnet
 
-## Team
-
-Built by **Norm Expert** for The Injective Global Cup (July 2026).
+**Built solo by Ilham Saputra** for The Injective Global Cup 2026.
