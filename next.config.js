@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: { serverComponentsExternalPackages: ['@injectivelabs/sdk-ts'] }
+  transpilePackages: [
+    "@injectivelabs/sdk-ts",
+    "@injectivelabs/networks",
+    "@injectivelabs/utils",
+    "@injectivelabs/core-proto-ts-v2"
+  ]
 };
 module.exports = nextConfig;
