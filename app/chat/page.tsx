@@ -281,12 +281,11 @@ function ChatContent() {
           body: JSON.stringify({ matchContext })
         });
 
+        const retryData = await safeParseJson(retry, "Failed to verify premium insight payment on-chain");
         if (!retry.ok) {
-          await safeParseJson(retry, "Failed to verify premium insight payment on-chain");
+          throw new Error(retryData.error || "Failed to verify premium insight payment on-chain");
         }
-
-        const data = await safeParseJson(retry, "Failed to parse premium insight");
-        setDeepDive(data.deepDive);
+        setDeepDive(retryData.deepDive);
         return;
       }
 
@@ -321,10 +320,12 @@ function ChatContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sender: walletAddress, pubKey: base64PubKey })
         });
+        
+        const prepareData = await safeParseJson(prepareRes, "Failed to prepare transaction");
         if (!prepareRes.ok) {
-          await safeParseJson(prepareRes, "Failed to prepare transaction");
+          throw new Error(prepareData.error || "Failed to prepare transaction");
         }
-        const { bodyBytes, authInfoBytes, accountNumber, sequence } = await safeParseJson(prepareRes, "Failed to parse prepared transaction");
+        const { bodyBytes, authInfoBytes, accountNumber, sequence } = prepareData;
 
         // Hex to Uint8Array helper
         const hexToBytes = (hex: string) => {
@@ -374,11 +375,11 @@ function ChatContent() {
           })
         });
 
+        const broadcastData = await safeParseJson(broadcastRes, "Transaction broadcast failed");
         if (!broadcastRes.ok) {
-          await safeParseJson(broadcastRes, "Transaction broadcast failed");
+          throw new Error(broadcastData.error || "Transaction broadcast failed");
         }
-
-        const { txHash } = await safeParseJson(broadcastRes, "Failed to parse broadcast response");
+        const { txHash } = broadcastData;
         console.log(`[x402] On-chain transaction broadcasted successfully. TxHash: ${txHash}`);
 
         // Retry the request with the real txHash in the X-PAYMENT header
@@ -391,17 +392,17 @@ function ChatContent() {
           body: JSON.stringify({ matchContext })
         });
 
+        const retryData = await safeParseJson(retry, "Failed to verify premium insight payment on-chain");
         if (!retry.ok) {
-          await safeParseJson(retry, "Failed to verify premium insight payment on-chain");
+          throw new Error(retryData.error || "Failed to verify premium insight payment on-chain");
         }
-
-        const data = await safeParseJson(retry, "Failed to parse premium insight");
-        setDeepDive(data.deepDive ?? JSON.stringify(challenge));
-      } else if (first.ok) {
-        const data = await safeParseJson(first, "Failed to parse premium insight");
-        setDeepDive(data.deepDive);
+        setDeepDive(retryData.deepDive ?? JSON.stringify(challenge));
       } else {
-        await safeParseJson(first, "Failed to request premium insight");
+        const firstData = await safeParseJson(first, "Failed to request premium insight");
+        if (!first.ok) {
+          throw new Error(firstData.error || "Failed to request premium insight");
+        }
+        setDeepDive(firstData.deepDive);
       }
     } catch (err) {
       console.error("Failed to unlock deep dive:", err);
