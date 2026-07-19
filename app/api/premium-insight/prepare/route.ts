@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ChainGrpcAuthApi, MsgSend, createTransaction } from "@injectivelabs/sdk-ts";
-import { getNetworkEndpoints, Network } from "@injectivelabs/networks";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +10,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const { ChainGrpcAuthApi, MsgSend, createTransaction } = await import("@injectivelabs/sdk-ts");
+    const { getNetworkEndpoints, Network } = await import("@injectivelabs/networks");
 
     const network =
       process.env.INJECTIVE_NETWORK === "mainnet" ? Network.Mainnet : Network.Testnet;

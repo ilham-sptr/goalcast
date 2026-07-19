@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { TxGrpcApi, createTxRawFromSigResponse } from "@injectivelabs/sdk-ts";
-import { getNetworkEndpoints, Network } from "@injectivelabs/networks";
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +10,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const { TxGrpcApi, createTxRawFromSigResponse } = await import("@injectivelabs/sdk-ts");
+    const { getNetworkEndpoints, Network } = await import("@injectivelabs/networks");
 
     // 1. Reconstruct the direct sign response payload (converting hex strings back to Uint8Arrays)
     const directSignResponse = {
